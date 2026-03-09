@@ -16,3 +16,4 @@ socket.on('msg_received', (data)=> {
     limsg.innerText = data.msg;
     msgList.appendChild(limsg);
 })
+

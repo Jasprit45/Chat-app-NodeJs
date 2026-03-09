@@ -5,20 +5,42 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
+const connect = require('./config/database-config');
 
 io.on('connection', (socket) => {
-  console.log('a user connected' , socket.id);
+  // console.log('a user connected' , socket.id);
+
+  socket.on('join_room', (data)=> {
+    console.log('joining a room');
+    // console.log(data.roomid);
+    socket.join(data.roomid);
+    // console.log("joined a room",data.roomid);
+    
+  });
 
   socket.on('msg_send',(data)=> {
+    // console.log("in msg_send");
     console.log(data);
-    io.emit('msg_received',data);
+    io.to(data.roomid).emit('msg_received',data);
   });
+
 
  
 });
-
+app.set('view engine', 'ejs');
 app.use('/',express.static(__dirname + '/public'));
 
-server.listen(3000, ()=> {
+app.get('/chat/:roomid', (req,res)=> {
+  res.render('index',{
+    name:'jassi',
+    id: req.params.roomid
+  });
+});
+
+
+
+server.listen(3000, async ()=> {
     console.log('Server started');
+    await connect();
+    console.log('mongodb connected');
 });
