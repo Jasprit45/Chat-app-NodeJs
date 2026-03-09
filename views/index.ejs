@@ -3,82 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <h1>Chat box</h1>
-    <!-- <%= name %>
-    <%= id %> -->
-    <button id="startchat" hidden="true" data-roomid="<%= id %>">Start chat</button>
-    <input type="text" id="username" placeholder="user id...">
-    <input type="text" id="newmsg" placeholder="message...">
-    <span id="typing">typing...</span>
-    <button id="btn">Send</button>
+    <title>Chat Box</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['DM Sans', 'sans-serif'] },
+                    colors: {
+                        ink:    '#1a1a2e',
+                        slate:  '#16213e',
+                        mist:   '#e8eaf0',
+                        accent: '#4f8ef7',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
 
-    <ul id="msglist">
-        <% for(var i=0; i<chats.length ; i++) { %>
-            <li><%=chats[i].user  %> : <%=chats[i].content  %> </li>
-        
-        <% } %>
-    </ul>
+        #msglist li {
+            animation: fadeSlideIn 0.25s ease forwards;
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Typing dots animation */
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0; }
+            40%            { opacity: 1; }
+        }
+        .dot { animation: blink 1.4s infinite both; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        #msglist::-webkit-scrollbar { width: 4px; }
+        #msglist::-webkit-scrollbar-track { background: transparent; }
+        #msglist::-webkit-scrollbar-thumb { background: #4f8ef744; border-radius: 99px; }
+    </style>
+</head>
+<body class="bg-ink min-h-screen flex items-center justify-center p-4">
+
+    <!-- Hidden EJS button — preserved as-is -->
+    <button id="startchat" hidden="true" data-roomid="<%= id %>">Start chat</button>
+
+    <!-- Card -->
+    <div class="w-full max-w-lg bg-slate rounded-2xl shadow-2xl overflow-hidden flex flex-col" style="height: 90vh; max-height: 680px;">
+
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-2.5 h-2.5 rounded-full bg-accent animate-pulse"></div>
+                <h1 class="text-mist font-semibold tracking-tight text-lg">Chat Box</h1>
+            </div>
+
+            <!-- Typing indicator -->
+            <span id="typing" class="hidden items-center gap-1.5 text-accent/70 text-xs font-medium">
+                <span class="flex gap-0.5">
+                    <span class="dot w-1 h-1 rounded-full bg-accent/70 inline-block"></span>
+                    <span class="dot w-1 h-1 rounded-full bg-accent/70 inline-block"></span>
+                    <span class="dot w-1 h-1 rounded-full bg-accent/70 inline-block"></span>
+                </span>
+                someone is typing
+            </span>
+        </div>
+
+        <!-- Username input -->
+        <div class="px-6 py-4 border-b border-white/5">
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 text-xs font-medium uppercase tracking-widest">You</span>
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="username"
+                    class="w-full bg-ink/60 text-mist text-sm rounded-xl pl-14 pr-4 py-3 outline-none border border-white/8 focus:border-accent/60 transition-colors placeholder:text-white/20"
+                />
+            </div>
+        </div>
+
+        <!-- Message list -->
+        <ul id="msglist" class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-3 scroll-smooth">
+            <% for(var i=0; i<chats.length; i++) { %>
+                <li class="bg-ink/50 text-mist/80 text-sm rounded-xl px-4 py-2.5 border border-white/5">
+                    <span class="text-accent font-medium"><%= chats[i].user %></span>
+                    <span class="text-white/30 mx-1.5">·</span>
+                    <%= chats[i].content %>
+                </li>
+            <% } %>
+        </ul>
+
+        <!-- Message input -->
+        <div class="px-6 py-4 border-t border-white/5 flex items-center gap-3">
+            <input
+                type="text"
+                id="newmsg"
+                placeholder="Type a message..."
+                class="flex-1 bg-ink/60 text-mist text-sm rounded-xl px-4 py-3 outline-none border border-white/8 focus:border-accent/60 transition-colors placeholder:text-white/20"
+            />
+            <button
+                id="btn"
+                class="bg-accent hover:bg-accent/80 active:scale-95 transition-all text-white text-sm font-semibold rounded-xl px-5 py-3 shrink-0"
+            >
+                Send
+            </button>
+        </div>
+
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         var socket = io();
-        let spanTyping = document.getElementById('typing');
-        spanTyping.style.display = 'none';
-        let startchat = document.getElementById('startchat');
-        let username = document.getElementById('username');
-        let btn = document.getElementById('btn');
-        let inputMsg = document.getElementById('newmsg');
-        let msgList = document.getElementById('msglist');
+
+        let spanTyping  = document.getElementById('typing');
+        let startchat   = document.getElementById('startchat');
+        let username    = document.getElementById('username');
+        let btn         = document.getElementById('btn');
+        let inputMsg    = document.getElementById('newmsg');
+        let msgList     = document.getElementById('msglist');
 
         let recevingTypingId = null;
-        let typingId = null;
+        let typingId         = null;
 
         btn.onclick = function exec() {
-            socket.emit('msg_send',{
-                msg: inputMsg.value,
-                username:username.value,
-                roomid: startchat.getAttribute('data-roomid'),
+            socket.emit('msg_send', {
+                msg:      inputMsg.value,
+                username: username.value,
+                roomid:   startchat.getAttribute('data-roomid'),
             });
         }
 
-       
-        socket.emit('join_room',{
+        socket.emit('join_room', {
             roomid: startchat.getAttribute('data-roomid'),
         });
-        
 
-        socket.on("msg_received", (data)=> {
-            console.log('Reached');
+        socket.on('msg_received', (data) => {
             let limsg = document.createElement('li');
-            limsg.innerText = `${data.username}: ${data.msg}`;
-            msgList.appendChild(limsg);    
+            limsg.className = 'bg-ink/50 text-mist/80 text-sm rounded-xl px-4 py-2.5 border border-white/5';
+            limsg.innerHTML = `<span class="text-accent font-medium">${data.username}</span><span class="text-white/30 mx-1.5">·</span>${data.msg}`;
+            msgList.appendChild(limsg);
+            msgList.scrollTop = msgList.scrollHeight;
         });
 
-        socket.on('someonetyping',(data)=>{
-            spanTyping.style.display = 'block';
+        socket.on('someonetyping', (data) => {
+            spanTyping.classList.remove('hidden');
+            spanTyping.classList.add('flex');
             clearTimeout(recevingTypingId);
-            recevingTypingId =  setTimeout(()=>{
-                spanTyping.style.display = 'none';
-            },1000);
+            recevingTypingId = setTimeout(() => {
+                spanTyping.classList.add('hidden');
+                spanTyping.classList.remove('flex');
+            }, 1000);
         });
 
-        inputMsg.addEventListener('keypress', function(e){
-            console.log("keypress");
-            socket.emit('typing',{
+        inputMsg.addEventListener('keypress', function(e) {
+            socket.emit('typing', {
                 roomid: startchat.getAttribute('data-roomid'),
             });
             clearTimeout(typingId);
-            // typingId =  setTimeout(()=>{
-            //     spanTyping.style.display = 'none';
-            // },1000);
-
-            
         });
-
-
     </script>
 
 </body>

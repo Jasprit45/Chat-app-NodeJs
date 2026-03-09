@@ -10,13 +10,10 @@ const Chat = require('./models/chat');
 const connect = require('./config/database-config');
 
 io.on('connection', (socket) => {
-  // console.log('a user connected' , socket.id);
 
   socket.on('join_room', (data)=> {
     console.log('joining a room');
-    // console.log(data.roomid);
     socket.join(data.roomid);
-    // console.log("joined a room",data.roomid);
     
   });
 
